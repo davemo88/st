@@ -1,4 +1,3 @@
-use clap::Parser;
 use lazy_static::lazy_static;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -61,19 +60,6 @@ const QUIRKS: [&str; 20] = [
     "Irate",
     "Beguiling",
 ];
-
-#[derive(Parser)]
-#[command(name = "st")]
-#[command(author, version, about)]
-struct Cli {
-    query: Vec<String>,
-    #[arg(short, long)]
-    yes: bool,
-    #[arg(short, long)]
-    no: bool,
-    #[arg(long)]
-    reset: bool,
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 enum Model {
@@ -211,12 +197,6 @@ impl<'a> Preamble<'a> {
             quirks: QUIRKS.into_iter().choose_multiple(&mut rng, 2)
         }
     }
-
-    fn chat_new_random(messages: &mut Vec<Message>) {
-        let message: Message = Preamble::new_random().into();
-//        println!("{}", message.content);
-        chat(message, messages);
-    }
 }
 
 impl<'a> ToString for Preamble<'a> {
@@ -224,39 +204,39 @@ impl<'a> ToString for Preamble<'a> {
         PREAMBLE_TEMPLATE
             .replace("FIRST", &self.first)
             .replace("LAST", &self.last)
-            .replace("QUIRKS", &self.quirks.join(","))
+            .replace("QUIRKS", &self.quirks.join(", "))
     }
+}
+
+fn next(messages: &mut Vec<Message>) {
+    let p = Preamble::new_random();
+    println!("Name: {} {}", p.first, p.last);
+    println!("Quirks: {}", p.quirks.join(", "));
+    println!("");
+    messages.drain(..);
+    chat(p.into(), messages);
 }
 
 fn main() {
     let mut rl = DefaultEditor::new().unwrap();
-//    #[cfg(feature = "with-file-history")]
     if rl.load_history("history.txt").is_err() {
         println!("No previous history.");
     }
     let mut messages = vec!();
-    Preamble::chat_new_random(&mut messages);
+    next(&mut messages);
     loop {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
-                if messages.is_empty() {
-                    Preamble::chat_new_random(&mut messages);
+                match line.as_str() {
+                    "Accept" | "Reject" | "Reset" => {
+                        next(&mut messages);
+                        continue;
+                    }
+                    _ => (),
                 }
                 rl.add_history_entry(line.as_str()).unwrap();
-                let mut words = vec!("st".into());
-                words.extend(shellwords::split(&line).unwrap());
-                let cli = Cli::try_parse_from(words);
-                if let Err(e) = cli {
-                    println!("{}", e);
-                    continue 
-                }
-                let cli = cli.unwrap();
-                if cli.yes || cli.no || cli.reset {
-                    messages.drain(0..);
-                    continue
-                } 
-                chat(Message::as_user(cli.query.join(" ")), &mut messages);
+                chat(Message::as_user(line), &mut messages);
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
