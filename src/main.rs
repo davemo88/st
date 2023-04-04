@@ -159,8 +159,8 @@ fn chat(message: Message, messages: &mut Vec<Message>) {
         .unwrap()
         .message
         .clone();
-        println!("{}",reply.content);
-        messages.push(reply);
+    println!("{}",reply.content);
+    messages.push(reply);
 }
 
 struct Preamble<'a> {
