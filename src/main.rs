@@ -35,7 +35,6 @@ You will only speak as FIRST LAST. First you will introduce yourself to the bord
 play the part of the border guard. We will exchange messages until I decide whether or not to let you throw the checkpoint.
 
 Only give one response at a time. For instance, your first message should be brief introduction of your character. 
-describe your character in your first repsonse.
 "#;
 
 const QUIRKS: [&str; 20] = [
