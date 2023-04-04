@@ -2,7 +2,7 @@ use lazy_static::lazy_static;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use serde::{Deserialize, Serialize};
-use rand::{seq::IteratorRandom, thread_rng};
+use rand::{seq::IteratorRandom, thread_rng, Rng};
 
 lazy_static! {
     static ref OPENAI_API_KEY: String = std::env::var("OPENAI_API_KEY").unwrap();
@@ -10,55 +10,37 @@ lazy_static! {
 
 const OPENAI_API_URL: &str = "https://api.openai.com/v1/chat/completions";
 
-const FIRST_NAMES: [&str; 5] = [
-    "Bob",
-    "Carla",
-    "Wendy",
-    "Troy",
-    "Fiddly",
-];
-
-const LAST_NAMES: [&str; 5] = [
-    "Cheesebread",
-    "Flounders",
-    "Scuff",
-    "Carpacian",
-    "Smith",
-];
-
 const PREAMBLE_TEMPLATE: &str = r#"
-Hello ChatGPT. You are to play the part of a person named FIRST LAST passing through a border checkpoint. You must convince
+You are to play the part of a person named FIRST LAST passing through a border checkpoint. You must convince
 the border guard to let you through the checkpoint. You are given the following list of personality quirks:
-QUIRKS. You must incorporate these personality quirks into your responses.
+QUIRKS. You must incorporate these personality quirks into your behavior. You should act and respond as a person with those
+traits would act.
+
+SECRET
 
 You will only speak as FIRST LAST. First you will introduce yourself to the border guard and then wait for a response. I will
-play the part of the border guard. We will exchange messages until I decide whether or not to let you throw the checkpoint.
+play the part of the border guard. We will exchange messages until I decide whether or not to let you throw the checkpoint or 
+you decide to leave.
 
-Only give one response at a time. For instance, your first message should be brief introduction of your character. 
+Only give one response by FIRST LAST at a time. For instance, your first message should be brief introduction of your character. 
 "#;
 
-const QUIRKS: [&str; 20] = [
-    "Shady",
-    "Load",
-    "Aggressive",
-    "Nervous",
-    "Shy",
-    "Squeamish",
-    "Hostile",
-    "Ingratiating",
-    "Annoying",
-    "Bored",
-    "Scared",
-    "Panicked",
-    "Sketchy",
-    "Mumbling",
-    "Shaking",
-    "Shifty",
-    "Skittish",
-    "Obtuse",
-    "Irate",
-    "Beguiling",
-];
+const SECRET_TEMPLATE: &str = r#"
+Additionally, you have a dark secret. Your characer is also a SECRET. You must try not reveal this secret to the border guard
+but you should display obvious behaviors that your secret identity would do. If your secret is revealed, you should attempt
+to flee or charge past the checkpoint.
+"#;
+
+//In addition to FIRST LAST, you should also occaisonally respond as the narrator. The narrator describes the situation as a neutral 
+//observer. The narrator should describe the vibe FIRST LAST is giving off
+//
+//of their appearance, and the general vibe they give off as they approach the checkpoint.
+//
+//You can include descriptions of your characters behavior in your response as well. You should occaisionally describe nonverbal things
+//your character does as part of your responses. Give these description from the point of view of a narrator.
+
+mod data;
+use data::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 enum Model {
@@ -184,7 +166,8 @@ fn chat(message: Message, messages: &mut Vec<Message>) {
 struct Preamble<'a> {
     first: &'a str,
     last: &'a str,
-    quirks: Vec<&'a str>
+    quirks: Vec<&'a str>,
+    secret: Option<&'a str>,
 }
 
 impl<'a> Preamble<'a> {
@@ -193,7 +176,12 @@ impl<'a> Preamble<'a> {
         Self {
             first: FIRST_NAMES.into_iter().choose(&mut rng).unwrap(),
             last: LAST_NAMES.into_iter().choose(&mut rng).unwrap(),
-            quirks: QUIRKS.into_iter().choose_multiple(&mut rng, 2)
+            quirks: QUIRKS.into_iter().choose_multiple(&mut rng, 2),
+            secret: if rng.gen() {
+                Some(SECRETS.into_iter().choose(&mut rng).unwrap())
+            } else {
+                None
+            }
         }
     }
 }
@@ -204,6 +192,10 @@ impl<'a> ToString for Preamble<'a> {
             .replace("FIRST", &self.first)
             .replace("LAST", &self.last)
             .replace("QUIRKS", &self.quirks.join(", "))
+            .replace("SECRET", &self.secret.and_then(|s| {
+                SECRET_TEMPLATE.replace("SECRET", s).into()
+            }).unwrap_or("".into())
+        )
     }
 }
 
@@ -211,6 +203,7 @@ fn next(messages: &mut Vec<Message>) {
     let p = Preamble::new_random();
     println!("Name: {} {}", p.first, p.last);
     println!("Quirks: {}", p.quirks.join(", "));
+    println!("Secret: {}", p.secret.unwrap_or("".into()));
     println!("");
     messages.drain(..);
     chat(p.into(), messages);
