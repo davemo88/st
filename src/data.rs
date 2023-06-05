@@ -1,5 +1,5 @@
 
-pub const FIRST_NAMES: [&str; 15] = [
+pub const FIRST_NAMES: [&str; 20] = [
     "Bob",
     "Carla",
     "Wendy",
@@ -12,13 +12,19 @@ pub const FIRST_NAMES: [&str; 15] = [
     "Bongo",
     "Cordelia",
     "Sha'nya",
+    "Jamal",
+    "Sven",
     "Arturo",
     "Gordon",
     "Adi",
+    "Bolero",
+    "Corky",
+    "Vanderbilt",
 ];
 
-pub const LAST_NAMES: [&str; 16] = [
+pub const LAST_NAMES: [&str; 20] = [
     "Cheesebread",
+    "Vanderbilt",
     "Flounders",
     "Scuff",
     "Carpacian",
@@ -34,9 +40,12 @@ pub const LAST_NAMES: [&str; 16] = [
     "Toulouse",
     "Bonaparte",
     "Scamdinger",
+    "Œuf",
+    "Sausige",
+    "Pepperoni",
 ];
 
-pub const QUIRKS: [&str; 33] = [
+pub const QUIRKS: [&str; 40] = [
     "Shady",
     "Loud",
     "Aggressive",
@@ -70,10 +79,20 @@ pub const QUIRKS: [&str; 33] = [
     "Impatient",
     "Calm",
     "Condescending",
+    "Bossy",
+    "Murderous",
+    "Undead",
+    "Vampiric",
+    "Wacky",
+    "Obessed with pasta",
+    "Obsessed with bananas",
 ];
 
-pub const SECRETS: [&str; 3] = [
+pub const SECRETS: [&str; 6] = [
     "Assassin",
     "Smuggler",
-    "Fugitive"
+    "Fugitive",
+    "Vampire",
+    "Republican",
+    "Taylor Swift fan",
 ];

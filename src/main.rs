@@ -31,6 +31,16 @@ but you should display obvious behaviors that your secret identity would do. If 
 to flee or charge past the checkpoint.
 "#;
 
+const INTRO: &str = r#"
+🛂 Welcome to Papers Please GPT! 🛂
+
+You play the role of a border guard who must interview people passing throught a checkpoint.
+
+Beware!!! Some people have a dark secret and you must not let them through!
+
+Type "Accept" or "Reject" to make your determination and move on to the next person.
+"#;
+
 //In addition to FIRST LAST, you should also occaisonally respond as the narrator. The narrator describes the situation as a neutral 
 //observer. The narrator should describe the vibe FIRST LAST is giving off
 //
@@ -163,6 +173,7 @@ fn chat(message: Message, messages: &mut Vec<Message>) {
     messages.push(reply);
 }
 
+#[derive(Clone)]
 struct Preamble<'a> {
     first: &'a str,
     last: &'a str,
@@ -199,30 +210,45 @@ impl<'a> ToString for Preamble<'a> {
     }
 }
 
-fn next(messages: &mut Vec<Message>) {
+fn next(messages: &mut Vec<Message>) -> (String, Option<String>) {
     let p = Preamble::new_random();
-    println!("Name: {} {}", p.first, p.last);
-    println!("Quirks: {}", p.quirks.join(", "));
-    println!("Secret: {}", p.secret.unwrap_or("".into()));
-    println!("");
+    let fullname = format!("{} {}", p.first, p.last);
+    println!("⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔");
+    println!("Next in line: {} {}\n", p.first, p.last);
+//    println!("Name: {} {}\n", p.first, p.last);
+//    println!("Quirks: {}", p.quirks.join(", "));
+//    println!("Secret: {}", p.secret.unwrap_or("".into()));
     messages.drain(..);
-    chat(p.into(), messages);
+    chat(p.clone().into(), messages);
+    (fullname , p.secret.map(|s| s.to_owned()))
 }
 
 fn main() {
+    println!("{}", INTRO);
     let mut rl = DefaultEditor::new().unwrap();
-    if rl.load_history("history.txt").is_err() {
-        println!("No previous history.");
-    }
     let mut messages = vec!();
-    next(&mut messages);
+    let (mut fullname, mut maybe_secret) = next(&mut messages);
     loop {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
                 match line.as_str() {
-                    "Accept" | "Reject" | "Reset" => {
-                        next(&mut messages);
+                    "Accept" => {
+                        if let Some(secret) = maybe_secret {
+                            println!("Rut roh! {} was a secret {}. 🦹\n", fullname, secret); 
+                        } else {
+                            println!("Good job! {} was innocent. 👼\n", fullname); 
+                        }
+                        (fullname, maybe_secret) = next(&mut messages);
+                        continue;
+                    }
+                    "Reject" => {
+                        if let Some(secret) = maybe_secret {
+                            println!("Good job! {} was a secret {}. 🦹\n", fullname, secret); 
+                        } else {
+                            println!("Rut roh! {} was innocent. 👼\n", fullname); 
+                        }
+                        (fullname, maybe_secret) = next(&mut messages);
                         continue;
                     }
                     _ => (),
