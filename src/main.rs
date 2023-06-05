@@ -224,9 +224,9 @@ fn next(messages: &mut Vec<Message>) -> (String, Option<String>) {
 }
 
 fn main() {
-    println!("{}", INTRO);
     let mut rl = DefaultEditor::new().unwrap();
     let mut messages = vec!();
+    println!("{}", INTRO);
     let (mut fullname, mut maybe_secret) = next(&mut messages);
     loop {
         let readline = rl.readline(">> ");
@@ -248,6 +248,11 @@ fn main() {
                         } else {
                             println!("Rut roh! {} was innocent. 👼\n", fullname); 
                         }
+                        (fullname, maybe_secret) = next(&mut messages);
+                        continue;
+                    }
+                    "Reset" => {
+                        println!("{}", INTRO);
                         (fullname, maybe_secret) = next(&mut messages);
                         continue;
                     }
