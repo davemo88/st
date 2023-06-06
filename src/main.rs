@@ -22,7 +22,7 @@ You will only speak as FIRST LAST. First you will introduce yourself to the bord
 play the part of the border guard. We will exchange messages until I decide whether or not to let you throw the checkpoint or 
 you decide to leave.
 
-Only give one response by FIRST LAST at a time. For instance, your first message should be brief introduction of your character. 
+Only give one response by FIRST LAST at a time. For instance, your first message should be brief introduction of your character. Use emojis to show emotion. Use a lot of emojis.
 "#;
 
 const SECRET_TEMPLATE: &str = r#"
@@ -32,7 +32,7 @@ to flee or charge past the checkpoint.
 "#;
 
 const INTRO: &str = r#"
-🛂 Welcome to Papers Please GPT! 🛂
+🛂 Welcome to Papers Plz GPT! 🛂
 
 You play the role of a border guard who must interview people passing throught a checkpoint.
 
@@ -40,6 +40,8 @@ Beware!!! Some people have a dark secret and you must not let them through!
 
 Type "Accept" or "Reject" to make your determination and move on to the next person.
 "#;
+
+const TEMP: f32 = 1.0;
 
 //In addition to FIRST LAST, you should also occaisonally respond as the narrator. The narrator describes the situation as a neutral 
 //observer. The narrator should describe the vibe FIRST LAST is giving off
@@ -157,7 +159,7 @@ fn chat(message: Message, messages: &mut Vec<Message>) {
             .header("Authorization", format!("Bearer {}", OPENAI_API_KEY.as_str()))
             .json(&ChatRequestBody {
                 model: Model::GPT35Turbo,
-                temperature: 0.7,
+                temperature: TEMP,
                 messages,
             })
         .send()
@@ -232,8 +234,8 @@ fn main() {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
-                match line.as_str() {
-                    "Accept" => {
+                match line.to_lowercase().as_str() {
+                    "accept" => {
                         if let Some(secret) = maybe_secret {
                             println!("Rut roh! {} was a secret {}. 🦹\n", fullname, secret); 
                         } else {
@@ -242,7 +244,7 @@ fn main() {
                         (fullname, maybe_secret) = next(&mut messages);
                         continue;
                     }
-                    "Reject" => {
+                    "reject" => {
                         if let Some(secret) = maybe_secret {
                             println!("Good job! {} was a secret {}. 🦹\n", fullname, secret); 
                         } else {
@@ -251,7 +253,7 @@ fn main() {
                         (fullname, maybe_secret) = next(&mut messages);
                         continue;
                     }
-                    "Reset" => {
+                    "reset" => {
                         println!("{}", INTRO);
                         (fullname, maybe_secret) = next(&mut messages);
                         continue;
