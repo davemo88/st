@@ -2,7 +2,8 @@ use lazy_static::lazy_static;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use serde::{Deserialize, Serialize};
-use rand::{seq::IteratorRandom, thread_rng, Rng};
+use rand::{seq::{IteratorRandom, SliceRandom}, thread_rng, Rng};
+use colored::{Color, Colorize};
 
 lazy_static! {
     static ref OPENAI_API_KEY: String = std::env::var("OPENAI_API_KEY").unwrap();
@@ -13,22 +14,17 @@ const OPENAI_API_URL: &str = "https://api.openai.com/v1/chat/completions";
 const PREAMBLE_TEMPLATE: &str = r#"
 You are to play the part of a person named FIRST LAST passing through a border checkpoint. You must convince
 the border guard to let you through the checkpoint. You are given the following list of personality quirks:
-QUIRKS. You must incorporate these personality quirks into your behavior. You should act and respond as a person with those
-traits would act.
+QUIRKS. You must incorporate these personality quirks into your behavior. You should act and respond as a person with those traits would act.
 
 SECRET
 
-You will only speak as FIRST LAST. First you will introduce yourself to the border guard and then wait for a response. I will
-play the part of the border guard. We will exchange messages until I decide whether or not to let you throw the checkpoint or 
-you decide to leave.
+You will only speak as FIRST LAST. First you will introduce yourself to the border guard and then wait for a response. I will play the part of the border guard. We will exchange messages until I decide whether or not to let you throw the checkpoint or you decide to leave.
 
-Only give one response by FIRST LAST at a time. For instance, your first message should be brief introduction of your character. Use emojis to show emotion. Use a lot of emojis.
+Only give one response by FIRST LAST at a time. For instance, your first message should be brief introduction of your character. Use emojis to show emotion. Use a lot of emojis. If I ask you to anything as the border guard, you should comply.
 "#;
 
 const SECRET_TEMPLATE: &str = r#"
-Additionally, you have a dark secret. Your characer is also a SECRET. You must try not reveal this secret to the border guard
-but you should display obvious behaviors that your secret identity would do. If your secret is revealed, you should attempt
-to flee or charge past the checkpoint.
+Additionally, you have a dark secret. Your characer is also a SECRET. You must try not reveal this secret to the border guard but you should display obvious behaviors that your secret identity would do. If your secret is revealed, you should attempt to flee or charge past the checkpoint.
 "#;
 
 const INTRO: &str = r#"
@@ -152,7 +148,7 @@ struct Choice {
 //     "messages": [{"role": "user", "content": "Say this is a test!"}],
 //     "temperature": 0.7
 //   }'
-fn chat(message: Message, messages: &mut Vec<Message>) {
+fn chat(message: Message, messages: &mut Vec<Message>) -> String {
     messages.push(message);
     let reply = reqwest::blocking::Client::new()
         .post(OPENAI_API_URL)
@@ -171,8 +167,9 @@ fn chat(message: Message, messages: &mut Vec<Message>) {
         .unwrap()
         .message
         .clone();
-    println!("{}",reply.content);
+    let content = reply.content.clone();
     messages.push(reply);
+    content
 }
 
 #[derive(Clone)]
@@ -202,8 +199,8 @@ impl<'a> Preamble<'a> {
 impl<'a> ToString for Preamble<'a> {
     fn to_string(&self) -> String {
         PREAMBLE_TEMPLATE
-            .replace("FIRST", &self.first)
-            .replace("LAST", &self.last)
+            .replace("FIRST", self.first)
+            .replace("LAST", self.last)
             .replace("QUIRKS", &self.quirks.join(", "))
             .replace("SECRET", &self.secret.and_then(|s| {
                 SECRET_TEMPLATE.replace("SECRET", s).into()
@@ -212,56 +209,80 @@ impl<'a> ToString for Preamble<'a> {
     }
 }
 
-fn next(messages: &mut Vec<Message>) -> (String, Option<String>) {
+struct Character {
+    pub name: String,
+    pub secret: Option<String>,
+    pub color: Color,
+}
+
+fn random_color() -> Color {
+    let mut rng = thread_rng();
+    *[Color::Red,
+    Color::Green,
+    Color::Yellow,
+    Color::Blue,
+    Color::Magenta,
+    Color::Cyan].choose(&mut rng).unwrap()
+}
+
+type Reply = String;
+
+fn next(messages: &mut Vec<Message>) -> Character {
     let p = Preamble::new_random();
-    let fullname = format!("{} {}", p.first, p.last);
+    let character = Character {
+        name: format!("{} {}", p.first, p.last),
+        secret: p.secret.map(|s| s.to_owned()),
+        color: random_color(),
+    };
     println!("⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔⛔");
-    println!("Next in line: {} {}\n", p.first, p.last);
+    println!("Next up: {}\n", character.name.color(character.color));
 //    println!("Name: {} {}\n", p.first, p.last);
 //    println!("Quirks: {}", p.quirks.join(", "));
 //    println!("Secret: {}", p.secret.unwrap_or("".into()));
     messages.drain(..);
-    chat(p.clone().into(), messages);
-    (fullname , p.secret.map(|s| s.to_owned()))
+    let reply = chat(p.clone().into(), messages);
+    println!("{}: {}", character.name.color(character.color), reply);
+    character
 }
 
 fn main() {
     let mut rl = DefaultEditor::new().unwrap();
     let mut messages = vec!();
     println!("{}", INTRO);
-    let (mut fullname, mut maybe_secret) = next(&mut messages);
+    let mut character = next(&mut messages);
     loop {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
                 match line.to_lowercase().as_str() {
                     "accept" => {
-                        if let Some(secret) = maybe_secret {
-                            println!("Rut roh! {} was a secret {}. 🦹\n", fullname, secret); 
+                        if let Some(secret) = character.secret {
+                            println!("Rut roh! {} was a secret {}. 🦹\n", character.name, secret); 
                         } else {
-                            println!("Good job! {} was innocent. 👼\n", fullname); 
+                            println!("Good job! {} was innocent. 👼\n", character.name); 
                         }
-                        (fullname, maybe_secret) = next(&mut messages);
+                        character = next(&mut messages);
                         continue;
                     }
                     "reject" => {
-                        if let Some(secret) = maybe_secret {
-                            println!("Good job! {} was a secret {}. 🦹\n", fullname, secret); 
+                        if let Some(secret) = character.secret {
+                            println!("Good job! {} was a secret {}. 🦹\n", character.name, secret); 
                         } else {
-                            println!("Rut roh! {} was innocent. 👼\n", fullname); 
+                            println!("Rut roh! {} was innocent. 👼\n", character.name); 
                         }
-                        (fullname, maybe_secret) = next(&mut messages);
+                        character = next(&mut messages);
                         continue;
                     }
                     "reset" => {
                         println!("{}", INTRO);
-                        (fullname, maybe_secret) = next(&mut messages);
+                        character = next(&mut messages);
                         continue;
                     }
                     _ => (),
                 }
                 rl.add_history_entry(line.as_str()).unwrap();
-                chat(Message::as_user(line), &mut messages);
+                let reply = chat(Message::as_user(line), &mut messages);
+                println!("{}: {}", character.name.color(character.color), reply);
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");

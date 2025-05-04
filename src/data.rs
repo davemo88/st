@@ -45,7 +45,7 @@ pub const LAST_NAMES: [&str; 20] = [
     "Pepperoni",
 ];
 
-pub const QUIRKS: [&str; 40] = [
+pub const QUIRKS: [&str; 41] = [
     "Shady",
     "Loud",
     "Aggressive",
@@ -82,7 +82,8 @@ pub const QUIRKS: [&str; 40] = [
     "Bossy",
     "Murderous",
     "Undead",
-    "Vampiric",
+    "Proselytizing",
+    "Preachy",
     "Wacky",
     "Obessed with pasta",
     "Obsessed with bananas",
